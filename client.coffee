@@ -40,11 +40,10 @@ KEYCODES =
 class Thread
 	constructor: ({@model, @node}) ->
 		for comment in @model.asArray()
-			new Comment
-				model: comment
-				thread: @
+			@load_comment comment
 
 		@make_new_comment()
+		@bind_events()
 
 	make_new_comment: ->
 		@new_comment = new Comment
@@ -55,7 +54,7 @@ class Thread
 
 	post: (comment) ->
 		@model.push comment.model
-
+		@prior_new_comment = @new_comment
 		if comment is @new_comment
 			@make_new_comment()
 
@@ -63,22 +62,48 @@ class Thread
 		@model.removeValue comment.model
 		comment.node.remove()
 
+	bind_events: ->
+		@model.addEventListener gapi.drive.realtime.EventType.VALUES_ADDED, (event) =>
+			if not event.isLocal
+				for comment in event.values
+					@load_comment comment
+
+		@model.addEventListener gapi.drive.realtime.EventType.VALUES_REMOVED, (event) =>
+			if not event.isLocal
+				for comment in event.values
+					console.log comment
+
+
+
+	load_comment: (comment) ->
+		new Comment
+			model: comment
+			thread: @
+
 class Comment
 	constructor: ({@model, @thread}) ->
-		@render()
-
-		if not @model?
-			@bind_new_comment_handlers()
-		else
-			@bind_basic_handlers()
+		@is_persisted = Boolean @model
+		@is_fresh = not @is_persisted
+		# fresh comments are ones you just started writing.
+		# They keep you in the same thread when you hit enter.
 
 		@create_model() if not @model?
 
+		@render()
+		@bind_events()
+
+		# track the child thread
 		thread_model = @model.get 'thread'
 		if thread_model
 			@child_thread = new Thread
 				model: thread_model
 				node: @thread_node
+
+
+		# if not @model?
+		# 	@bind_new_comment_handlers()
+		# else
+		# 	@bind_basic_handlers()
 
 	create_model: ->
 		@model = model.createMap
@@ -94,61 +119,47 @@ class Comment
 		@thread_node = $ '<div class="thread"></div>'
 		@node.append @thread_node
 
-	bind_basic_handlers: ->
+	track_text: ->
 		gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
 
-		delete_if_blank = (event) =>
+	bind_events: ->
+		if @is_persisted
+			@track_text()
+
+		@text_node.on 'keypress', (event) =>
+			if event.which is KEYCODES.enter
+				event.preventDefault()
+				event.stopPropagation()
+				if @text_node.val()
+					if @is_fresh
+						@thread.new_comment.text_node.focus()
+						@is_fresh = false
+					else
+						@start_thread()
+			else
+				if not @is_persisted
+					@make_real()
+					# promote to a real comment				
+
+		# backspace refuses to work with keypress, so we must use keyup instead.
+		# TODO: make it so it only deletes if it was blank BEFORE the backspace.
+		@text_node.on 'keyup', (event) =>
 			if event.which is KEYCODES.backspace and @ isnt @thread.new_comment and not @text_node.val()
 				@thread.delete @
-		@text_node.on 'keyup', delete_if_blank
 
-		if not @child_thread?
-			@bind_threadless_handlers()
+	make_real: ->
+		@thread.post @
+		@track_text()
+		@is_persisted = true
 
-	bind_threadless_handlers: ->
-		# Hitting enter opens a sub-thread
-		focus_new_thread = (event) =>
-			if event.which is KEYCODES.enter
-				event.preventDefault()
-				event.stopPropagation()
-				thread_model = model.createList()
-				@model.set 'thread', thread_model
-				@child_thread = new Thread
-					model: thread_model
-					node: @thread_node
+	start_thread: ->
+		thread_model = model.createList()
+		@model.set 'thread', thread_model
+		@child_thread = new Thread
+			model: thread_model
+			node: @thread_node
 
-				@child_thread.new_comment.text_node.focus()
-				@text_node.off 'keypress', focus_new_thread
-
-		@text_node.on 'keypress', focus_new_thread
-
-	bind_new_comment_handlers: ->
-		# This line is ommitted from both of these handlers because we can assume it is the case:
-		# if @ is @thread.new_comment
-
-		# Hitting enter jumps to the fresh prototype comment
-		focus_new = (event) =>
-			if event.which is KEYCODES.enter
-				event.preventDefault()
-				event.stopPropagation()
-
-				if @text_node.val()
-					@thread.new_comment.text_node.focus()
-					@text_node.off 'keypress', focus_new
-				return false
-		@text_node.on 'keypress', focus_new
-
-		# Typing immediately posts the comment
-		spawn_next_comment = (event) =>
-			if event.which isnt KEYCODES.enter
-				@thread.post @
-				@bind_basic_handlers()
-				@text_node.off 'keypress', spawn_next_comment
-		@text_node.on 'keypress', spawn_next_comment
-
-
-
-
+		@child_thread.new_comment.text_node.focus()
 
 
 

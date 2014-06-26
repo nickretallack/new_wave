@@ -40,12 +40,10 @@ Realtime World!', and is named 'text'.
       _ref = this.model.asArray();
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         comment = _ref[_i];
-        new Comment({
-          model: comment,
-          thread: this
-        });
+        this.load_comment(comment);
       }
       this.make_new_comment();
+      this.bind_events();
     }
 
     Thread.prototype.make_new_comment = function() {
@@ -60,6 +58,7 @@ Realtime World!', and is named 'text'.
 
     Thread.prototype.post = function(comment) {
       this.model.push(comment.model);
+      this.prior_new_comment = this.new_comment;
       if (comment === this.new_comment) {
         return this.make_new_comment();
       }
@@ -70,6 +69,44 @@ Realtime World!', and is named 'text'.
       return comment.node.remove();
     };
 
+    Thread.prototype.bind_events = function() {
+      this.model.addEventListener(gapi.drive.realtime.EventType.VALUES_ADDED, (function(_this) {
+        return function(event) {
+          var comment, _i, _len, _ref, _results;
+          if (!event.isLocal) {
+            _ref = event.values;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              comment = _ref[_i];
+              _results.push(_this.load_comment(comment));
+            }
+            return _results;
+          }
+        };
+      })(this));
+      return this.model.addEventListener(gapi.drive.realtime.EventType.VALUES_REMOVED, (function(_this) {
+        return function(event) {
+          var comment, _i, _len, _ref, _results;
+          if (!event.isLocal) {
+            _ref = event.values;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              comment = _ref[_i];
+              _results.push(console.log(comment));
+            }
+            return _results;
+          }
+        };
+      })(this));
+    };
+
+    Thread.prototype.load_comment = function(comment) {
+      return new Comment({
+        model: comment,
+        thread: this
+      });
+    };
+
     return Thread;
 
   })();
@@ -78,15 +115,13 @@ Realtime World!', and is named 'text'.
     function Comment(_arg) {
       var thread_model;
       this.model = _arg.model, this.thread = _arg.thread;
-      this.render();
-      if (this.model == null) {
-        this.bind_new_comment_handlers();
-      } else {
-        this.bind_basic_handlers();
-      }
+      this.is_persisted = Boolean(this.model);
+      this.is_fresh = !this.is_persisted;
       if (this.model == null) {
         this.create_model();
       }
+      this.render();
+      this.bind_events();
       thread_model = this.model.get('thread');
       if (thread_model) {
         this.child_thread = new Thread({
@@ -111,70 +146,58 @@ Realtime World!', and is named 'text'.
       return this.node.append(this.thread_node);
     };
 
-    Comment.prototype.bind_basic_handlers = function() {
-      var delete_if_blank;
-      gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
-      delete_if_blank = (function(_this) {
-        return function(event) {
-          if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
-            return _this.thread["delete"](_this);
-          }
-        };
-      })(this);
-      this.text_node.on('keyup', delete_if_blank);
-      if (this.child_thread == null) {
-        return this.bind_threadless_handlers();
+    Comment.prototype.track_text = function() {
+      return gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
+    };
+
+    Comment.prototype.bind_events = function() {
+      if (this.is_persisted) {
+        this.track_text();
       }
-    };
-
-    Comment.prototype.bind_threadless_handlers = function() {
-      var focus_new_thread;
-      focus_new_thread = (function(_this) {
-        return function(event) {
-          var thread_model;
-          if (event.which === KEYCODES.enter) {
-            event.preventDefault();
-            event.stopPropagation();
-            thread_model = model.createList();
-            _this.model.set('thread', thread_model);
-            _this.child_thread = new Thread({
-              model: thread_model,
-              node: _this.thread_node
-            });
-            _this.child_thread.new_comment.text_node.focus();
-            return _this.text_node.off('keypress', focus_new_thread);
-          }
-        };
-      })(this);
-      return this.text_node.on('keypress', focus_new_thread);
-    };
-
-    Comment.prototype.bind_new_comment_handlers = function() {
-      var focus_new, spawn_next_comment;
-      focus_new = (function(_this) {
+      this.text_node.on('keypress', (function(_this) {
         return function(event) {
           if (event.which === KEYCODES.enter) {
             event.preventDefault();
             event.stopPropagation();
             if (_this.text_node.val()) {
-              _this.thread.new_comment.text_node.focus();
-              _this.text_node.off('keypress', focus_new);
+              if (_this.is_fresh) {
+                _this.thread.new_comment.text_node.focus();
+                return _this.is_fresh = false;
+              } else {
+                return _this.start_thread();
+              }
             }
-            return false;
+          } else {
+            if (!_this.is_persisted) {
+              return _this.make_real();
+            }
           }
         };
-      })(this);
-      this.text_node.on('keypress', focus_new);
-      spawn_next_comment = (function(_this) {
+      })(this));
+      return this.text_node.on('keyup', (function(_this) {
         return function(event) {
-          if (event.which !== KEYCODES.enter) {
-            _this.thread.post(_this);
-            _this.bind_basic_handlers();
-            return _this.text_node.off('keypress', spawn_next_comment);
+          if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
+            return _this.thread["delete"](_this);
           }
         };
-      })(this);
-      return this.text_node.on('keypress', spawn_next_comment);
+      })(this));
+    };
+
+    Comment.prototype.make_real = function() {
+      this.thread.post(this);
+      this.track_text();
+      return this.is_persisted = true;
+    };
+
+    Comment.prototype.start_thread = function() {
+      var thread_model;
+      thread_model = model.createList();
+      this.model.set('thread', thread_model);
+      this.child_thread = new Thread({
+        model: thread_model,
+        node: this.thread_node
+      });
+      return this.child_thread.new_comment.text_node.focus();
     };
 
     return Comment;

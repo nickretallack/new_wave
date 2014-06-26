@@ -77,21 +77,21 @@ onFileLoaded = (doc) ->
 	# textArea2.disabled = false
 	
 	# Add logic for undo button.
-	undoButton = document.getElementById("undoButton")
-	redoButton = document.getElementById("redoButton")
-	undoButton.onclick = (e) ->
-		model.undo()
-		return
+	# undoButton = document.getElementById("undoButton")
+	# redoButton = document.getElementById("redoButton")
+	# undoButton.onclick = (e) ->
+	# 	model.undo()
+	# 	return
 
-	redoButton.onclick = (e) ->
-		model.redo()
-		return
+	# redoButton.onclick = (e) ->
+	# 	model.redo()
+	# 	return
 	
-	# Add event handler for UndoRedoStateChanged events.
-	onUndoRedoStateChanged = (e) ->
-		undoButton.disabled = not e.canUndo
-		redoButton.disabled = not e.canRedo
-		return
+	# # Add event handler for UndoRedoStateChanged events.
+	# onUndoRedoStateChanged = (e) ->
+	# 	undoButton.disabled = not e.canUndo
+	# 	redoButton.disabled = not e.canRedo
+	# 	return
 
 	model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
 	return

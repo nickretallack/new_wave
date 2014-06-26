@@ -32,7 +32,7 @@ Realtime World!', and is named 'text'.
    */
 
   onFileLoaded = function(doc) {
-    var comment, comment_node, comments, model, onUndoRedoStateChanged, redoButton, root, textarea, thread_node, undoButton, _i, _len, _ref;
+    var comment, comment_node, comments, model, root, textarea, thread_node, _i, _len, _ref;
     model = doc.getModel();
     root = model.getRoot();
     thread_node = $(document.body);
@@ -46,18 +46,6 @@ Realtime World!', and is named 'text'.
       thread_node.append(comment_node);
       gapi.drive.realtime.databinding.bindString(comment.get('text'), textarea[0]);
     }
-    undoButton = document.getElementById("undoButton");
-    redoButton = document.getElementById("redoButton");
-    undoButton.onclick = function(e) {
-      model.undo();
-    };
-    redoButton.onclick = function(e) {
-      model.redo();
-    };
-    onUndoRedoStateChanged = function(e) {
-      undoButton.disabled = !e.canUndo;
-      redoButton.disabled = !e.canRedo;
-    };
     model.addEventListener(gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged);
   };
 

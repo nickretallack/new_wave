@@ -33,7 +33,9 @@ and bind it to our string model that we created in initializeModel.
 @param doc {gapi.drive.realtime.Document} the Realtime document.
 ###
 
-KEYCODES = enter:13
+KEYCODES =
+	enter:13
+	backspace:8
 
 class Thread
 	constructor: ({@model, @node}) ->
@@ -56,6 +58,10 @@ class Thread
 
 		if comment is @new_comment
 			@make_new_comment()
+
+	delete: (comment) ->
+		@model.removeValue comment.model
+		comment.node.remove()
 
 class Comment
 	constructor: ({@model, @thread}) ->
@@ -87,16 +93,23 @@ class Comment
 
 			@text_node.one 'keypress', spawn_next_comment
 
-
-			look_for_enter = (event) =>
+			focus_new = (event) =>
 				if event.which is KEYCODES.enter and @text_node.val()
 					@thread.new_comment.text_node.focus()
-					@text_node.off 'keypress', look_for_enter
+					@text_node.off 'keypress', focus_new
 
-			@text_node.on 'keypress', look_for_enter
+			@text_node.on 'keypress', focus_new
 
 		else
 			gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
+
+		delete_if_blank = (event) =>
+			if event.which is KEYCODES.backspace and @ isnt @thread.new_comment and not @text_node.val()
+				@thread.delete @
+
+
+		@text_node.on 'keyup', delete_if_blank
+
 
 register_types = ->
 	# gapi.drive.realtime.custom.registerType Comment, 'Comment'

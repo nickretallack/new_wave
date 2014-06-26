@@ -29,7 +29,8 @@ Realtime World!', and is named 'text'.
    */
 
   KEYCODES = {
-    enter: 13
+    enter: 13,
+    backspace: 8
   };
 
   Thread = (function() {
@@ -64,6 +65,11 @@ Realtime World!', and is named 'text'.
       }
     };
 
+    Thread.prototype["delete"] = function(comment) {
+      this.model.removeValue(comment.model);
+      return comment.node.remove();
+    };
+
     return Thread;
 
   })();
@@ -84,7 +90,7 @@ Realtime World!', and is named 'text'.
     };
 
     Comment.prototype.render = function() {
-      var look_for_enter, spawn_next_comment;
+      var delete_if_blank, focus_new, spawn_next_comment;
       this.node = $('<div class="comment"></div>');
       this.text_node = $('<textarea></textarea>');
       this.node.append(this.text_node);
@@ -97,18 +103,26 @@ Realtime World!', and is named 'text'.
           };
         })(this);
         this.text_node.one('keypress', spawn_next_comment);
-        look_for_enter = (function(_this) {
+        focus_new = (function(_this) {
           return function(event) {
             if (event.which === KEYCODES.enter && _this.text_node.val()) {
               _this.thread.new_comment.text_node.focus();
-              return _this.text_node.off('keypress', look_for_enter);
+              return _this.text_node.off('keypress', focus_new);
             }
           };
         })(this);
-        return this.text_node.on('keypress', look_for_enter);
+        this.text_node.on('keypress', focus_new);
       } else {
-        return gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
+        gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
       }
+      delete_if_blank = (function(_this) {
+        return function(event) {
+          if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
+            return _this.thread["delete"](_this);
+          }
+        };
+      })(this);
+      return this.text_node.on('keyup', delete_if_blank);
     };
 
     return Comment;

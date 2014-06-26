@@ -76,10 +76,23 @@ Realtime World!', and is named 'text'.
 
   Comment = (function() {
     function Comment(_arg) {
+      var thread_model;
       this.model = _arg.model, this.thread = _arg.thread;
       this.render();
       if (this.model == null) {
+        this.bind_new_comment_handlers();
+      } else {
+        this.bind_basic_handlers();
+      }
+      if (this.model == null) {
         this.create_model();
+      }
+      thread_model = this.model.get('thread');
+      if (thread_model) {
+        this.child_thread = new Thread({
+          model: thread_model,
+          node: this.thread_node
+        });
       }
     }
 
@@ -90,31 +103,17 @@ Realtime World!', and is named 'text'.
     };
 
     Comment.prototype.render = function() {
-      var delete_if_blank, focus_new, spawn_next_comment;
       this.node = $('<div class="comment"></div>');
       this.text_node = $('<textarea></textarea>');
       this.node.append(this.text_node);
       this.thread.node.append(this.node);
-      if (!this.model) {
-        spawn_next_comment = (function(_this) {
-          return function(event) {
-            _this.thread.post(_this);
-            return gapi.drive.realtime.databinding.bindString(_this.model.get('text'), _this.text_node[0]);
-          };
-        })(this);
-        this.text_node.one('keypress', spawn_next_comment);
-        focus_new = (function(_this) {
-          return function(event) {
-            if (event.which === KEYCODES.enter && _this.text_node.val()) {
-              _this.thread.new_comment.text_node.focus();
-              return _this.text_node.off('keypress', focus_new);
-            }
-          };
-        })(this);
-        this.text_node.on('keypress', focus_new);
-      } else {
-        gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
-      }
+      this.thread_node = $('<div class="thread"></div>');
+      return this.node.append(this.thread_node);
+    };
+
+    Comment.prototype.bind_basic_handlers = function() {
+      var delete_if_blank;
+      gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
       delete_if_blank = (function(_this) {
         return function(event) {
           if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
@@ -122,7 +121,50 @@ Realtime World!', and is named 'text'.
           }
         };
       })(this);
-      return this.text_node.on('keyup', delete_if_blank);
+      this.text_node.on('keyup', delete_if_blank);
+      if (this.child_thread == null) {
+        return this.bind_threadless_handlers();
+      }
+    };
+
+    Comment.prototype.bind_threadless_handlers = function() {
+      var focus_new_thread;
+      focus_new_thread = (function(_this) {
+        return function(event) {
+          var thread_model;
+          if (event.which === KEYCODES.enter) {
+            thread_model = model.createList();
+            _this.model.set('thread', thread_model);
+            _this.child_thread = new Thread({
+              model: thread_model,
+              node: _this.thread_node
+            });
+            _this.child_thread.new_comment.text_node.focus();
+            return _this.text_node.off('keypress', focus_new_thread);
+          }
+        };
+      })(this);
+      return this.text_node.on('keypress', focus_new_thread);
+    };
+
+    Comment.prototype.bind_new_comment_handlers = function() {
+      var focus_new, spawn_next_comment;
+      spawn_next_comment = (function(_this) {
+        return function(event) {
+          _this.thread.post(_this);
+          return _this.bind_basic_handlers();
+        };
+      })(this);
+      this.text_node.one('keypress', spawn_next_comment);
+      focus_new = (function(_this) {
+        return function(event) {
+          if (event.which === KEYCODES.enter && _this.text_node.val()) {
+            _this.thread.new_comment.text_node.focus();
+            return _this.text_node.off('keypress', focus_new);
+          }
+        };
+      })(this);
+      return this.text_node.on('keypress', focus_new);
     };
 
     return Comment;

@@ -13,12 +13,9 @@ Realtime World!', and is named 'text'.
   var Comment, initializeModel, onFileLoaded, realtimeOptions, register_types, startRealtime;
 
   initializeModel = function(model) {
-    var alpha_comment, comments, root;
+    var comments, root;
     root = model.getRoot();
-    alpha_comment = model.createMap({
-      text: model.createString("First!")
-    });
-    comments = model.createList([alpha_comment]);
+    comments = model.createList();
     root.set('comments', comments);
   };
 
@@ -32,9 +29,19 @@ Realtime World!', and is named 'text'.
    */
 
   Comment = (function() {
-    function Comment() {
+    function Comment(_arg) {
+      this.unrezzed = _arg.unrezzed, this.model = _arg.model, this.document_model = _arg.document_model, this.thread = _arg.thread, this.thread_node = _arg.thread_node;
+      if (this.model == null) {
+        this.create_model();
+      }
       this.render();
     }
+
+    Comment.prototype.create_model = function() {
+      return this.model = this.document_model.createMap({
+        text: this.document_model.createString()
+      });
+    };
 
     Comment.prototype.render = function() {
       this.node = $('<div class="comment"></div>');
@@ -42,32 +49,46 @@ Realtime World!', and is named 'text'.
       this.replies_node = $('<div class="replies"></div>');
       this.node.append(this.text_node);
       this.node.append(this.replies_node);
-      return this.text_node.one('keypress', (function(_this) {
-        return function() {
-          _this.thread.push(_this);
-          return gapi.drive.realtime.databinding.bindString(_this.text, _this.text_node[0]);
-        };
-      })(this));
+      this.thread_node.append(this.node);
+      if (this.unrezzed) {
+        return this.text_node.one('keypress', (function(_this) {
+          return function() {
+            _this.thread.push(_this.model);
+            return gapi.drive.realtime.databinding.bindString(_this.model.get('text'), _this.text_node[0]);
+          };
+        })(this));
+      } else {
+        return gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
+      }
     };
 
     return Comment;
 
   })();
 
-  register_types = function() {
-    return gapi.drive.realtime.custom.registerType(Comment, 'Comment');
-  };
+  register_types = function() {};
 
   onFileLoaded = function(doc) {
-    var comments, model, new_comment, root, thread_node;
-    Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField('text');
-    Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField('replies');
+    var comment, comments, model, new_comment, root, thread_node, _i, _len, _ref;
     thread_node = $(document.body);
     model = doc.getModel();
     root = model.getRoot();
-    comments = model.createList();
-    root.set('comments', comments);
-    new_comment = model.create('Comment');
+    comments = root.get('comments');
+    _ref = comments.asArray();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      comment = _ref[_i];
+      new Comment({
+        model: comment,
+        thread: comments,
+        thread_node: thread_node
+      });
+    }
+    new_comment = new Comment({
+      unrezzed: true,
+      document_model: model,
+      thread: comments,
+      thread_node: thread_node
+    });
     new_comment.thread = comments;
     thread_node.append(new_comment.node);
   };
@@ -140,7 +161,7 @@ Realtime World!', and is named 'text'.
     authButtonElementId: "authorizeButton",
     initializeModel: initializeModel,
     autoCreate: true,
-    defaultTitle: "New Wave",
+    defaultTitle: "New Wave2",
     newFileMimeType: null,
     onFileLoaded: onFileLoaded,
     registerTypes: register_types,

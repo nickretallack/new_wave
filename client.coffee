@@ -15,12 +15,14 @@ Realtime World!', and is named 'text'.
 initializeModel = (model) ->
 	# string = model.createString "Hello Realtime World!"
 	root = model.getRoot()
-
-	alpha_comment = model.createMap
-		text: model.createString "First!"
-
-	comments = model.createList([alpha_comment])
+	comments = model.createList()
 	root.set 'comments', comments
+
+	# alpha_comment = model.createMap
+	# 	text: model.createString "First!"
+
+	# comments = model.createList([alpha_comment])
+	# root.set 'comments', comments
 	return
 
 ###
@@ -32,11 +34,13 @@ and bind it to our string model that we created in initializeModel.
 ###
 
 class Comment
-	constructor: ->
+	constructor: ({@unrezzed, @model, @document_model, @thread, @thread_node}) ->
+		@create_model() if not @model?
 		@render()
-		# This constructor can't take arguments.
-		# Instead, all data is side-loaded.
-		# It is required that you side-load @thread
+
+	create_model: ->
+		@model = @document_model.createMap
+			text: @document_model.createString()
 
 	render: ->
 		@node = $ '<div class="comment"></div>'
@@ -44,33 +48,44 @@ class Comment
 		@replies_node = $ '<div class="replies"></div>'
 		@node.append @text_node
 		@node.append @replies_node
+		@thread_node.append @node
 
 		# Typing immediately posts the comment
-		@text_node.one 'keypress', =>
-			@thread.push @
-			gapi.drive.realtime.databinding.bindString @text, @text_node[0]
-
+		if @unrezzed
+			@text_node.one 'keypress', =>
+				@thread.push @model
+				gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
+		else
+			gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
 
 register_types = ->
-	gapi.drive.realtime.custom.registerType Comment, 'Comment'
-
+	# gapi.drive.realtime.custom.registerType Comment, 'Comment'
+	# Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField 'text'
+	# Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField 'replies'
 
 
 onFileLoaded = (doc) ->
-	# register comment type
-	Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField 'text'
-	Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField 'replies'
 
 	# variables
 	thread_node = $(document.body)
 	model = doc.getModel()
 	root = model.getRoot()
 
-	# Initialize
-	comments = model.createList()
-	root.set 'comments', comments
+	# Render
+	# wrap the model with things
+	comments = root.get 'comments'
+	for comment in comments.asArray()
+		new Comment
+			model: comment
+			thread: comments
+			thread_node: thread_node
 
-	new_comment = model.create 'Comment'
+	new_comment = new Comment
+		unrezzed: true
+		document_model: model
+		thread: comments
+		thread_node: thread_node
+
 	new_comment.thread = comments
 	thread_node.append(new_comment.node)
 
@@ -152,7 +167,7 @@ realtimeOptions =
 	authButtonElementId: "authorizeButton"
 	initializeModel: initializeModel
 	autoCreate: true
-	defaultTitle: "New Wave"
+	defaultTitle: "New Wave2"
 	newFileMimeType: null
 	onFileLoaded: onFileLoaded
 	registerTypes: register_types

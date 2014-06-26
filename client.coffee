@@ -30,9 +30,49 @@ depending on the Realtime model. In this case, create a text control binder
 and bind it to our string model that we created in initializeModel.
 @param doc {gapi.drive.realtime.Document} the Realtime document.
 ###
+
+class Comment
+	constructor: ->
+		@render()
+		# This constructor can't take arguments.
+		# Instead, all data is side-loaded.
+		# It is required that you side-load @thread
+
+	render: ->
+		@node = $ '<div class="comment"></div>'
+		@text_node = $ '<textarea></textarea>'
+		@replies_node = $ '<div class="replies"></div>'
+		@node.append @text_node
+		@node.append @replies_node
+
+		# Typing immediately posts the comment
+		@text_node.one 'keypress', =>
+			@thread.push @
+			gapi.drive.realtime.databinding.bindString @text, @text_node[0]
+
+
+register_types = ->
+	gapi.drive.realtime.custom.registerType Comment, 'Comment'
+
+
+
 onFileLoaded = (doc) ->
+	# register comment type
+	Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField 'text'
+	Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField 'replies'
+
+	# variables
+	thread_node = $(document.body)
 	model = doc.getModel()
 	root = model.getRoot()
+
+	# Initialize
+	comments = model.createList()
+	root.set 'comments', comments
+
+	new_comment = model.create 'Comment'
+	new_comment.thread = comments
+	thread_node.append(new_comment.node)
 
 	# alpha_comment = model.createMap
 	# 	text: model.createString "First!"
@@ -40,60 +80,19 @@ onFileLoaded = (doc) ->
 	# comments = model.createList([alpha_comment])
 	# root.set 'comments', comments
 
-	thread_node = $(document.body)
 
-	comments = root.get('comments')
-	for comment in comments.asArray()
-		comment_node = $ '<div class="comment"></div>'
-		textarea = $ '<textarea></textarea>'
-		comment_node.append textarea
-		thread_node.append comment_node
-		gapi.drive.realtime.databinding.bindString comment.get('text'), textarea[0]
 
-	# string = doc.getModel().getRoot().get("text")
-	
-	# Keeping one box updated with a String binder.
-	# textArea1 = document.getElementById("editor1")
-	# gapi.drive.realtime.databinding.bindString string, textArea1
-	
-	# # Keeping one box updated with a custom EventListener.
-	# textArea2 = document.getElementById("editor2")
-	# gapi.drive.realtime.databinding.bindString string, textArea2
+	# comments = root.get('comments')
+	# for comment in comments.asArray()
+	# 	comment_node = $ '<div class="comment"></div>'
+	# 	textarea = $ '<textarea></textarea>'
+	# 	comment_node.append textarea
+	# 	thread_node.append comment_node
+	# 	gapi.drive.realtime.databinding.bindString comment.get('text'), textarea[0]
 
-	# updateTextArea2 = (e) ->
-	#   textArea2.value = string
-	#   return
 
-	# string.addEventListener gapi.drive.realtime.EventType.TEXT_INSERTED, updateTextArea2
-	# string.addEventListener gapi.drive.realtime.EventType.TEXT_DELETED, updateTextArea2
-	# textArea2.onkeyup = ->
-	#   string.setText textArea2.value
-	#   return
 
-	# updateTextArea2()
-	
-	# Enabling UI Elements.
-	# textArea1.disabled = false
-	# textArea2.disabled = false
-	
-	# Add logic for undo button.
-	# undoButton = document.getElementById("undoButton")
-	# redoButton = document.getElementById("redoButton")
-	# undoButton.onclick = (e) ->
-	# 	model.undo()
-	# 	return
-
-	# redoButton.onclick = (e) ->
-	# 	model.redo()
-	# 	return
-	
-	# # Add event handler for UndoRedoStateChanged events.
-	# onUndoRedoStateChanged = (e) ->
-	# 	undoButton.disabled = not e.canUndo
-	# 	redoButton.disabled = not e.canRedo
-	# 	return
-
-	model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
+	# model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
 	return
 
 ###
@@ -156,7 +155,7 @@ realtimeOptions =
 	defaultTitle: "New Wave"
 	newFileMimeType: null
 	onFileLoaded: onFileLoaded
-	registerTypes: null
+	registerTypes: register_types
 	afterAuth: null
 
 startRealtime()

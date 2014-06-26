@@ -10,7 +10,7 @@ Realtime World!', and is named 'text'.
  */
 
 (function() {
-  var initializeModel, onFileLoaded, realtimeOptions, startRealtime;
+  var Comment, initializeModel, onFileLoaded, realtimeOptions, register_types, startRealtime;
 
   initializeModel = function(model) {
     var alpha_comment, comments, root;
@@ -31,22 +31,45 @@ Realtime World!', and is named 'text'.
   @param doc {gapi.drive.realtime.Document} the Realtime document.
    */
 
+  Comment = (function() {
+    function Comment() {
+      this.render();
+    }
+
+    Comment.prototype.render = function() {
+      this.node = $('<div class="comment"></div>');
+      this.text_node = $('<textarea></textarea>');
+      this.replies_node = $('<div class="replies"></div>');
+      this.node.append(this.text_node);
+      this.node.append(this.replies_node);
+      return this.text_node.one('keypress', (function(_this) {
+        return function() {
+          _this.thread.push(_this);
+          return gapi.drive.realtime.databinding.bindString(_this.text, _this.text_node[0]);
+        };
+      })(this));
+    };
+
+    return Comment;
+
+  })();
+
+  register_types = function() {
+    return gapi.drive.realtime.custom.registerType(Comment, 'Comment');
+  };
+
   onFileLoaded = function(doc) {
-    var comment, comment_node, comments, model, root, textarea, thread_node, _i, _len, _ref;
+    var comments, model, new_comment, root, thread_node;
+    Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField('text');
+    Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField('replies');
+    thread_node = $(document.body);
     model = doc.getModel();
     root = model.getRoot();
-    thread_node = $(document.body);
-    comments = root.get('comments');
-    _ref = comments.asArray();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      comment = _ref[_i];
-      comment_node = $('<div class="comment"></div>');
-      textarea = $('<textarea></textarea>');
-      comment_node.append(textarea);
-      thread_node.append(comment_node);
-      gapi.drive.realtime.databinding.bindString(comment.get('text'), textarea[0]);
-    }
-    model.addEventListener(gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged);
+    comments = model.createList();
+    root.set('comments', comments);
+    new_comment = model.create('Comment');
+    new_comment.thread = comments;
+    thread_node.append(new_comment.node);
   };
 
 
@@ -120,7 +143,7 @@ Realtime World!', and is named 'text'.
     defaultTitle: "New Wave",
     newFileMimeType: null,
     onFileLoaded: onFileLoaded,
-    registerTypes: null,
+    registerTypes: register_types,
     afterAuth: null
   };
 

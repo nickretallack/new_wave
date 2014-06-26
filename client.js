@@ -133,6 +133,8 @@ Realtime World!', and is named 'text'.
         return function(event) {
           var thread_model;
           if (event.which === KEYCODES.enter) {
+            event.preventDefault();
+            event.stopPropagation();
             thread_model = model.createList();
             _this.model.set('thread', thread_model);
             _this.child_thread = new Thread({
@@ -149,22 +151,30 @@ Realtime World!', and is named 'text'.
 
     Comment.prototype.bind_new_comment_handlers = function() {
       var focus_new, spawn_next_comment;
-      spawn_next_comment = (function(_this) {
-        return function(event) {
-          _this.thread.post(_this);
-          return _this.bind_basic_handlers();
-        };
-      })(this);
-      this.text_node.one('keypress', spawn_next_comment);
       focus_new = (function(_this) {
         return function(event) {
-          if (event.which === KEYCODES.enter && _this.text_node.val()) {
-            _this.thread.new_comment.text_node.focus();
-            return _this.text_node.off('keypress', focus_new);
+          if (event.which === KEYCODES.enter) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (_this.text_node.val()) {
+              _this.thread.new_comment.text_node.focus();
+              _this.text_node.off('keypress', focus_new);
+            }
+            return false;
           }
         };
       })(this);
-      return this.text_node.on('keypress', focus_new);
+      this.text_node.on('keypress', focus_new);
+      spawn_next_comment = (function(_this) {
+        return function(event) {
+          if (event.which !== KEYCODES.enter) {
+            _this.thread.post(_this);
+            _this.bind_basic_handlers();
+            return _this.text_node.off('keypress', spawn_next_comment);
+          }
+        };
+      })(this);
+      return this.text_node.on('keypress', spawn_next_comment);
     };
 
     return Comment;

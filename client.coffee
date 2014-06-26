@@ -94,8 +94,6 @@ class Comment
 		@thread_node = $ '<div class="thread"></div>'
 		@node.append @thread_node
 
-
-
 	bind_basic_handlers: ->
 		gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
 
@@ -111,6 +109,8 @@ class Comment
 		# Hitting enter opens a sub-thread
 		focus_new_thread = (event) =>
 			if event.which is KEYCODES.enter
+				event.preventDefault()
+				event.stopPropagation()
 				thread_model = model.createList()
 				@model.set 'thread', thread_model
 				@child_thread = new Thread
@@ -126,18 +126,26 @@ class Comment
 		# This line is ommitted from both of these handlers because we can assume it is the case:
 		# if @ is @thread.new_comment
 
-		# Typing immediately posts the comment
-		spawn_next_comment = (event) =>
-			@thread.post @
-			@bind_basic_handlers()
-		@text_node.one 'keypress', spawn_next_comment
-
 		# Hitting enter jumps to the fresh prototype comment
 		focus_new = (event) =>
-			if event.which is KEYCODES.enter and @text_node.val()
-				@thread.new_comment.text_node.focus()
-				@text_node.off 'keypress', focus_new
+			if event.which is KEYCODES.enter
+				event.preventDefault()
+				event.stopPropagation()
+
+				if @text_node.val()
+					@thread.new_comment.text_node.focus()
+					@text_node.off 'keypress', focus_new
+				return false
 		@text_node.on 'keypress', focus_new
+
+		# Typing immediately posts the comment
+		spawn_next_comment = (event) =>
+			if event.which isnt KEYCODES.enter
+				@thread.post @
+				@bind_basic_handlers()
+				@text_node.off 'keypress', spawn_next_comment
+		@text_node.on 'keypress', spawn_next_comment
+
 
 
 

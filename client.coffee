@@ -33,28 +33,68 @@ and bind it to our string model that we created in initializeModel.
 @param doc {gapi.drive.realtime.Document} the Realtime document.
 ###
 
+KEYCODES = enter:13
+
+class Thread
+	constructor: ({@model, @node}) ->
+		for comment in @model.asArray()
+			new Comment
+				model: comment
+				thread: @
+
+		@make_new_comment()
+
+	make_new_comment: ->
+		@new_comment = new Comment
+			thread: @
+
+	render: ->
+		@node = $ '<div class="replies"></div>'
+
+	post: (comment) ->
+		@model.push comment.model
+
+		if comment is @new_comment
+			@make_new_comment()
+
 class Comment
-	constructor: ({@unrezzed, @model, @document_model, @thread, @thread_node}) ->
-		@create_model() if not @model?
+	constructor: ({@model, @thread}) ->
 		@render()
+		@create_model() if not @model?
+		# @child_thread = new Thread
 
 	create_model: ->
-		@model = @document_model.createMap
-			text: @document_model.createString()
+		@model = model.createMap
+			text: model.createString()
 
 	render: ->
 		@node = $ '<div class="comment"></div>'
 		@text_node = $ '<textarea></textarea>'
-		@replies_node = $ '<div class="replies"></div>'
 		@node.append @text_node
-		@node.append @replies_node
-		@thread_node.append @node
+		# @node.append @replies_node
+		@thread.node.append @node
 
 		# Typing immediately posts the comment
-		if @unrezzed
-			@text_node.one 'keypress', =>
-				@thread.push @model
+		if not @model
+
+			# This line is ommitted from both of these handlers because we can assume it is the case:
+			# if @ is @thread.new_comment
+
+			spawn_next_comment = (event) =>
+				@thread.post @
 				gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
+				# @text_node.off 'keypress', spawn_next_comment
+
+			@text_node.one 'keypress', spawn_next_comment
+
+
+			look_for_enter = (event) =>
+				if event.which is KEYCODES.enter and @text_node.val()
+					@thread.new_comment.text_node.focus()
+					@text_node.off 'keypress', look_for_enter
+
+			@text_node.on 'keypress', look_for_enter
+
 		else
 			gapi.drive.realtime.databinding.bindString @model.get('text'), @text_node[0]
 
@@ -63,6 +103,7 @@ register_types = ->
 	# Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField 'text'
 	# Comment.prototype.replies = gapi.drive.realtime.custom.collaborativeField 'replies'
 
+model = null
 
 onFileLoaded = (doc) ->
 
@@ -70,24 +111,13 @@ onFileLoaded = (doc) ->
 	thread_node = $(document.body)
 	model = doc.getModel()
 	root = model.getRoot()
+	thread = root.get 'comments'
 
 	# Render
 	# wrap the model with things
-	comments = root.get 'comments'
-	for comment in comments.asArray()
-		new Comment
-			model: comment
-			thread: comments
-			thread_node: thread_node
-
-	new_comment = new Comment
-		unrezzed: true
-		document_model: model
-		thread: comments
-		thread_node: thread_node
-
-	new_comment.thread = comments
-	thread_node.append(new_comment.node)
+	new Thread
+		model: thread
+		node: thread_node
 
 	# alpha_comment = model.createMap
 	# 	text: model.createString "First!"

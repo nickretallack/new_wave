@@ -10,7 +10,7 @@ Realtime World!', and is named 'text'.
  */
 
 (function() {
-  var Comment, initializeModel, onFileLoaded, realtimeOptions, register_types, startRealtime;
+  var Comment, KEYCODES, Thread, initializeModel, model, onFileLoaded, realtimeOptions, register_types, startRealtime;
 
   initializeModel = function(model) {
     var comments, root;
@@ -28,35 +28,84 @@ Realtime World!', and is named 'text'.
   @param doc {gapi.drive.realtime.Document} the Realtime document.
    */
 
+  KEYCODES = {
+    enter: 13
+  };
+
+  Thread = (function() {
+    function Thread(_arg) {
+      var comment, _i, _len, _ref;
+      this.model = _arg.model, this.node = _arg.node;
+      _ref = this.model.asArray();
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        comment = _ref[_i];
+        new Comment({
+          model: comment,
+          thread: this
+        });
+      }
+      this.make_new_comment();
+    }
+
+    Thread.prototype.make_new_comment = function() {
+      return this.new_comment = new Comment({
+        thread: this
+      });
+    };
+
+    Thread.prototype.render = function() {
+      return this.node = $('<div class="replies"></div>');
+    };
+
+    Thread.prototype.post = function(comment) {
+      this.model.push(comment.model);
+      if (comment === this.new_comment) {
+        return this.make_new_comment();
+      }
+    };
+
+    return Thread;
+
+  })();
+
   Comment = (function() {
     function Comment(_arg) {
-      this.unrezzed = _arg.unrezzed, this.model = _arg.model, this.document_model = _arg.document_model, this.thread = _arg.thread, this.thread_node = _arg.thread_node;
+      this.model = _arg.model, this.thread = _arg.thread;
+      this.render();
       if (this.model == null) {
         this.create_model();
       }
-      this.render();
     }
 
     Comment.prototype.create_model = function() {
-      return this.model = this.document_model.createMap({
-        text: this.document_model.createString()
+      return this.model = model.createMap({
+        text: model.createString()
       });
     };
 
     Comment.prototype.render = function() {
+      var look_for_enter, spawn_next_comment;
       this.node = $('<div class="comment"></div>');
       this.text_node = $('<textarea></textarea>');
-      this.replies_node = $('<div class="replies"></div>');
       this.node.append(this.text_node);
-      this.node.append(this.replies_node);
-      this.thread_node.append(this.node);
-      if (this.unrezzed) {
-        return this.text_node.one('keypress', (function(_this) {
-          return function() {
-            _this.thread.push(_this.model);
+      this.thread.node.append(this.node);
+      if (!this.model) {
+        spawn_next_comment = (function(_this) {
+          return function(event) {
+            _this.thread.post(_this);
             return gapi.drive.realtime.databinding.bindString(_this.model.get('text'), _this.text_node[0]);
           };
-        })(this));
+        })(this);
+        this.text_node.one('keypress', spawn_next_comment);
+        look_for_enter = (function(_this) {
+          return function(event) {
+            if (event.which === KEYCODES.enter && _this.text_node.val()) {
+              _this.thread.new_comment.text_node.focus();
+              return _this.text_node.off('keypress', look_for_enter);
+            }
+          };
+        })(this);
+        return this.text_node.on('keypress', look_for_enter);
       } else {
         return gapi.drive.realtime.databinding.bindString(this.model.get('text'), this.text_node[0]);
       }
@@ -68,29 +117,18 @@ Realtime World!', and is named 'text'.
 
   register_types = function() {};
 
+  model = null;
+
   onFileLoaded = function(doc) {
-    var comment, comments, model, new_comment, root, thread_node, _i, _len, _ref;
+    var root, thread, thread_node;
     thread_node = $(document.body);
     model = doc.getModel();
     root = model.getRoot();
-    comments = root.get('comments');
-    _ref = comments.asArray();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      comment = _ref[_i];
-      new Comment({
-        model: comment,
-        thread: comments,
-        thread_node: thread_node
-      });
-    }
-    new_comment = new Comment({
-      unrezzed: true,
-      document_model: model,
-      thread: comments,
-      thread_node: thread_node
+    thread = root.get('comments');
+    new Thread({
+      model: thread,
+      node: thread_node
     });
-    new_comment.thread = comments;
-    thread_node.append(new_comment.node);
   };
 
 

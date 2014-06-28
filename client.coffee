@@ -39,10 +39,10 @@ KEYCODES =
 
 class Thread
 	constructor: ({@model, @node}) ->
+		@make_new_comment()
 		for comment in @model.asArray()
 			@load_comment comment
 
-		@make_new_comment()
 		@bind_events()
 
 	make_new_comment: ->
@@ -113,7 +113,12 @@ class Comment
 		@node = $ '<div class="comment"></div>'
 		@text_node = $ '<textarea></textarea>'
 		@node.append @text_node
-		@thread.node.append @node
+
+		# put it before the new comment node
+		if @is_persisted
+			@thread.new_comment.node.before @node
+		else
+			@thread.node.append @node
 
 		# this will be invisible until it is populated
 		@thread_node = $ '<div class="thread"></div>'
@@ -143,7 +148,7 @@ class Comment
 
 		# backspace refuses to work with keypress, so we must use keyup instead.
 		# TODO: make it so it only deletes if it was blank BEFORE the backspace.
-		@text_node.on 'keyup', (event) =>
+		@text_node.on 'keydown', (event) =>
 			if event.which is KEYCODES.backspace and @ isnt @thread.new_comment and not @text_node.val()
 				@thread.delete @
 
@@ -206,58 +211,11 @@ onFileLoaded = (doc) ->
 	# model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
 	return
 
-###
-Options for the Realtime loader.
-###
-
-###
-Client ID from the console.
-###
-
-###
-The ID of the button to click to authorize. Must be a DOM element ID.
-###
-
-###
-Function to be called when a Realtime model is first created.
-###
-
-###
-Autocreate files right after auth automatically.
-###
-
-###
-The name of newly created Drive files.
-###
-
-###
-The MIME type of newly created Drive Files. By default the application
-specific MIME type will be used:
-application/vnd.google-apps.drive-sdk.
-###
-# Using default.
-
-###
-Function to be called every time a Realtime file is loaded.
-###
-
-###
-Function to be called to inityalize custom Collaborative Objects types.
-###
-# No action.
-
-###
-Function to be called after authorization and before loading files.
-###
-# No action.
-
-###
-Start the Realtime loader with the options.
-###
 startRealtime = ->
 	realtimeLoader = new rtclient.RealtimeLoader(realtimeOptions)
 	realtimeLoader.start()
 	return
+
 realtimeOptions =
 	clientId: "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
 	authButtonElementId: "authorizeButton"

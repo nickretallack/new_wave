@@ -37,12 +37,12 @@ Realtime World!', and is named 'text'.
     function Thread(_arg) {
       var comment, _i, _len, _ref;
       this.model = _arg.model, this.node = _arg.node;
+      this.make_new_comment();
       _ref = this.model.asArray();
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         comment = _ref[_i];
         this.load_comment(comment);
       }
-      this.make_new_comment();
       this.bind_events();
     }
 
@@ -141,7 +141,11 @@ Realtime World!', and is named 'text'.
       this.node = $('<div class="comment"></div>');
       this.text_node = $('<textarea></textarea>');
       this.node.append(this.text_node);
-      this.thread.node.append(this.node);
+      if (this.is_persisted) {
+        this.thread.new_comment.node.before(this.node);
+      } else {
+        this.thread.node.append(this.node);
+      }
       this.thread_node = $('<div class="thread"></div>');
       return this.node.append(this.thread_node);
     };
@@ -174,7 +178,7 @@ Realtime World!', and is named 'text'.
           }
         };
       })(this));
-      return this.text_node.on('keyup', (function(_this) {
+      return this.text_node.on('keydown', (function(_this) {
         return function(event) {
           if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
             return _this.thread["delete"](_this);
@@ -219,63 +223,6 @@ Realtime World!', and is named 'text'.
       node: thread_node
     });
   };
-
-
-  /*
-  Options for the Realtime loader.
-   */
-
-
-  /*
-  Client ID from the console.
-   */
-
-
-  /*
-  The ID of the button to click to authorize. Must be a DOM element ID.
-   */
-
-
-  /*
-  Function to be called when a Realtime model is first created.
-   */
-
-
-  /*
-  Autocreate files right after auth automatically.
-   */
-
-
-  /*
-  The name of newly created Drive files.
-   */
-
-
-  /*
-  The MIME type of newly created Drive Files. By default the application
-  specific MIME type will be used:
-  application/vnd.google-apps.drive-sdk.
-   */
-
-
-  /*
-  Function to be called every time a Realtime file is loaded.
-   */
-
-
-  /*
-  Function to be called to inityalize custom Collaborative Objects types.
-   */
-
-
-  /*
-  Function to be called after authorization and before loading files.
-   */
-
-
-  /*
-  Start the Realtime loader with the options.
-   */
 
   startRealtime = function() {
     var realtimeLoader;

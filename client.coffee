@@ -37,6 +37,13 @@ KEYCODES =
 	enter:13
 	backspace:8
 
+users = []
+
+class User
+	constructor: ({@container, @info}) ->
+		@node = $ '<div class="user">#{@info.displayname}</div>'
+		@container.append @node
+
 class Thread
 	constructor: ({@model, @node}) ->
 		@make_new_comment()
@@ -150,6 +157,7 @@ class Comment
 		# TODO: make it so it only deletes if it was blank BEFORE the backspace.
 		@text_node.on 'keydown', (event) =>
 			if event.which is KEYCODES.backspace and @ isnt @thread.new_comment and not @text_node.val()
+				event.preventDefault()
 				@thread.delete @
 
 	make_real: ->
@@ -179,7 +187,8 @@ model = null
 onFileLoaded = (doc) ->
 
 	# variables
-	thread_node = $(document.body)
+	thread_node = $ '.conversation'
+	users_node = $ '.users'
 	model = doc.getModel()
 	root = model.getRoot()
 	thread = root.get 'comments'
@@ -189,6 +198,12 @@ onFileLoaded = (doc) ->
 	new Thread
 		model: thread
 		node: thread_node
+
+	document.addEventListener gapi.drive.realtime.EventType.COLLABORATOR_JOINED, (event) ->
+		user = event.collaborator
+		new User
+			container: users_node
+			info: user
 
 	# alpha_comment = model.createMap
 	# 	text: model.createString "First!"
@@ -206,7 +221,8 @@ onFileLoaded = (doc) ->
 	# 	thread_node.append comment_node
 	# 	gapi.drive.realtime.databinding.bindString comment.get('text'), textarea[0]
 
-
+	# gapi.load "drive-share", init
+	init_share()
 
 	# model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
 	return
@@ -228,3 +244,24 @@ realtimeOptions =
 	afterAuth: null
 
 startRealtime()
+
+querystring = (key) ->
+	key = key.replace(/[*+?^$.\[\]{}()|\\\/]/g, "\\$&") # escape RegEx meta chars
+	match = location.hash.match(new RegExp("[#&]" + key + "=([^&]+)(&|$)"))
+	match and decodeURIComponent(match[1].replace(/\+/g, " "))
+
+init_share = ->
+	file_id = querystring 'fileIds'
+	# app_id = realtimeOptions.clientId.split('.').shift();
+	app_id = '750901531017'
+	s = new gapi.drive.share.ShareClient app_id
+	s.setItemIds [file_id]
+
+	$('#share-button').on 'click', (event) ->
+		s.showSettingsDialog()
+
+	return
+
+# window.onload = ->
+# 	gapi.load "drive-share", init
+# 	return

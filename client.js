@@ -10,7 +10,7 @@ Realtime World!', and is named 'text'.
  */
 
 (function() {
-  var Comment, KEYCODES, Thread, initializeModel, model, onFileLoaded, realtimeOptions, register_types, startRealtime;
+  var Comment, KEYCODES, Thread, User, init_share, initializeModel, model, onFileLoaded, querystring, realtimeOptions, register_types, startRealtime, users;
 
   initializeModel = function(model) {
     var comments, root;
@@ -32,6 +32,19 @@ Realtime World!', and is named 'text'.
     enter: 13,
     backspace: 8
   };
+
+  users = [];
+
+  User = (function() {
+    function User(_arg) {
+      this.container = _arg.container, this.info = _arg.info;
+      this.node = $('<div class="user">#{@info.displayname}</div>');
+      this.container.append(this.node);
+    }
+
+    return User;
+
+  })();
 
   Thread = (function() {
     function Thread(_arg) {
@@ -181,6 +194,7 @@ Realtime World!', and is named 'text'.
       return this.text_node.on('keydown', (function(_this) {
         return function(event) {
           if (event.which === KEYCODES.backspace && _this !== _this.thread.new_comment && !_this.text_node.val()) {
+            event.preventDefault();
             return _this.thread["delete"](_this);
           }
         };
@@ -213,8 +227,9 @@ Realtime World!', and is named 'text'.
   model = null;
 
   onFileLoaded = function(doc) {
-    var root, thread, thread_node;
-    thread_node = $(document.body);
+    var root, thread, thread_node, users_node;
+    thread_node = $('.conversation');
+    users_node = $('.users');
     model = doc.getModel();
     root = model.getRoot();
     thread = root.get('comments');
@@ -222,6 +237,15 @@ Realtime World!', and is named 'text'.
       model: thread,
       node: thread_node
     });
+    document.addEventListener(gapi.drive.realtime.EventType.COLLABORATOR_JOINED, function(event) {
+      var user;
+      user = event.collaborator;
+      return new User({
+        container: users_node,
+        info: user
+      });
+    });
+    init_share();
   };
 
   startRealtime = function() {
@@ -243,5 +267,23 @@ Realtime World!', and is named 'text'.
   };
 
   startRealtime();
+
+  querystring = function(key) {
+    var match;
+    key = key.replace(/[*+?^$.\[\]{}()|\\\/]/g, "\\$&");
+    match = location.hash.match(new RegExp("[#&]" + key + "=([^&]+)(&|$)"));
+    return match && decodeURIComponent(match[1].replace(/\+/g, " "));
+  };
+
+  init_share = function() {
+    var app_id, file_id, s;
+    file_id = querystring('fileIds');
+    app_id = '750901531017';
+    s = new gapi.drive.share.ShareClient(app_id);
+    s.setItemIds([file_id]);
+    $('#share-button').on('click', function(event) {
+      return s.showSettingsDialog();
+    });
+  };
 
 }).call(this);

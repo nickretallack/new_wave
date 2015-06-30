@@ -269,7 +269,7 @@ authorize = ->
 start = ->
 	# With auth taken care of, load a file, or create one if there
 	# is not an id in the URL.
-	id = state?.ids[0] or realtimeUtils.getParam('id')
+	id = state?.ids?[0] or realtimeUtils.getParam('id')
 	if id
 		# Load the document id from the URL
 		realtimeUtils.load id.replace('/', ''), onFileLoaded, initializeModel

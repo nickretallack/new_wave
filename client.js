@@ -290,8 +290,8 @@
   };
 
   start = function() {
-    var id;
-    id = (state != null ? state.ids[0] : void 0) || realtimeUtils.getParam('id');
+    var id, _ref;
+    id = (state != null ? (_ref = state.ids) != null ? _ref[0] : void 0 : void 0) || realtimeUtils.getParam('id');
     if (id) {
       return realtimeUtils.load(id.replace('/', ''), onFileLoaded, initializeModel);
     } else {

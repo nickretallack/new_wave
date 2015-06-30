@@ -233,11 +233,13 @@ startRealtime = ->
 	return
 
 realtimeOptions =
+	# clientId: "160404049324-mtcq2ghmhjtoro7sgp5knlpdqo0d8tft.apps.googleusercontent.com"
 	clientId: "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
+	# clientId: "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
 	authButtonElementId: "authorizeButton"
 	initializeModel: initializeModel
 	autoCreate: true
-	defaultTitle: "New Wave2"
+	defaultTitle: "New Realtime Quickstart File"
 	newFileMimeType: null
 	onFileLoaded: onFileLoaded
 	registerTypes: register_types
@@ -262,6 +264,3 @@ init_share = ->
 
 	return
 
-# window.onload = ->
-# 	gapi.load "drive-share", init
-# 	return

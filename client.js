@@ -259,7 +259,7 @@ Realtime World!', and is named 'text'.
     authButtonElementId: "authorizeButton",
     initializeModel: initializeModel,
     autoCreate: true,
-    defaultTitle: "New Wave2",
+    defaultTitle: "New Realtime Quickstart File",
     newFileMimeType: null,
     onFileLoaded: onFileLoaded,
     registerTypes: register_types,

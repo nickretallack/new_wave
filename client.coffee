@@ -1,3 +1,7 @@
+CLIENT_ID = "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
+APP_ID = '750901531017' #CLIENT_ID.split('-')[0]
+console.log APP_ID
+
 # class Comment
 # gapi.drive.realtime.custom.registerType Comment, 'Comment'
 # Comment.prototype.text = gapi.drive.realtime.custom.collaborativeField 'text'
@@ -227,40 +231,63 @@ onFileLoaded = (doc) ->
 	# model.addEventListener gapi.drive.realtime.EventType.UNDO_REDO_STATE_CHANGED, onUndoRedoStateChanged
 	return
 
-startRealtime = ->
-	realtimeLoader = new rtclient.RealtimeLoader(realtimeOptions)
-	realtimeLoader.start()
+
+
+realtimeUtils = new utils.RealtimeUtils({ clientId: CLIENT_ID });
+
+decodeState = ->
+	state_param = realtimeUtils.getParam 'state'
+	if state_param
+		# decode and chop off the trailing /
+		decoded = decodeURIComponent(state_param)
+		if decoded[decoded.length-1] == '/'
+			decoded = decoded.substring(0, decoded.length-1)
+		return JSON.parse decoded
+
+state = decodeState()
+
+authorize = ->
+	# Attempt to authorize
+	realtimeUtils.authorize ((response) ->
+		if response.error
+			# Authorization failed because this is the first time the user has used your application,
+			# show the authorize button to prompt them to authorize manually.
+			button = document.getElementById('auth-button')
+			button.classList.add 'visible'
+			button.addEventListener 'click', ->
+				realtimeUtils.authorize ((response) ->
+					start()
+					return
+				), true
+				return
+		else
+			start()
+		return
+	), false
 	return
 
-realtimeOptions =
-	# clientId: "160404049324-mtcq2ghmhjtoro7sgp5knlpdqo0d8tft.apps.googleusercontent.com"
-	clientId: "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
-	# clientId: "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
-	authButtonElementId: "authorizeButton"
-	initializeModel: initializeModel
-	autoCreate: true
-	defaultTitle: "New Realtime Quickstart File"
-	newFileMimeType: null
-	onFileLoaded: onFileLoaded
-	registerTypes: register_types
-	afterAuth: null
+start = ->
+	# With auth taken care of, load a file, or create one if there
+	# is not an id in the URL.
+	id = state?.ids[0] or realtimeUtils.getParam('id')
+	if id
+		# Load the document id from the URL
+		realtimeUtils.load id.replace('/', ''), onFileLoaded, initializeModel
+	else
+		# Create a new document, add it to the URL
+		realtimeUtils.createRealtimeFile 'New Wave Comments File', (createResponse) ->
+			window.history.pushState null, null, '?id=' + createResponse.id
+			realtimeUtils.load createResponse.id, onFileLoaded, initializeModel
+			return
 
-startRealtime()
-
-querystring = (key) ->
-	key = key.replace(/[*+?^$.\[\]{}()|\\\/]/g, "\\$&") # escape RegEx meta chars
-	match = location.hash.match(new RegExp("[#&]" + key + "=([^&]+)(&|$)"))
-	match and decodeURIComponent(match[1].replace(/\+/g, " "))
 
 init_share = ->
-	file_id = querystring 'fileIds'
-	# app_id = realtimeOptions.clientId.split('.').shift();
-	app_id = '750901531017'
-	s = new gapi.drive.share.ShareClient app_id
-	s.setItemIds [file_id]
+	id = realtimeUtils.getParam('id')
+	s = new gapi.drive.share.ShareClient APP_ID
+	s.setItemIds id
 
 	$('#share-button').on 'click', (event) ->
 		s.showSettingsDialog()
-
 	return
 
+authorize()

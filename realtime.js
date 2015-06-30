@@ -68,10 +68,10 @@ limitations under the License.
   @function
    */
 
-  rtclient.getParams = function() {
+  rtclient.getParamsHelper = function(string) {
     var hashFragment, i, paramStr, paramStrs, params;
     params = {};
-    hashFragment = window.location.hash;
+    hashFragment = string;
     if (hashFragment) {
       paramStrs = hashFragment.slice(1).split("&");
       i = 0;
@@ -85,12 +85,22 @@ limitations under the License.
     return params;
   };
 
+  rtclient.getParams = function() {
+    return rtclient.getParamsHelper(window.location.hash);
+  };
+
+  rtclient.getQueryParams = function() {
+    return rtclient.getParamsHelper(window.location.search);
+  };
+
 
   /*
   Instance of the query parameters.
    */
 
   rtclient.params = rtclient.getParams();
+
+  rtclient.query = rtclient.getQueryParams();
 
 
   /*
@@ -354,14 +364,12 @@ limitations under the License.
    */
 
   rtclient.RealtimeLoader.prototype.load = function() {
-    var authorizer, fileIds, index, state, stateObj, userId;
-    fileIds = rtclient.params["fileIds"];
-    if (fileIds) {
-      fileIds = fileIds.split(",");
-    }
+    var authorizer, fileIds, index, state, stateObj, userId, _ref;
+    fileIds = (_ref = rtclient.params["fileIds"]) != null ? _ref.split(",") : void 0;
     userId = this.authorizer.userId;
     state = rtclient.params["state"];
     authorizer = this.authorizer;
+    debugger;
     if (fileIds) {
       for (index in fileIds) {
         gapi.drive.realtime.load(fileIds[index], this.onFileLoaded, this.initializeModel, this.handleErrors);

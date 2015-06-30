@@ -54,9 +54,10 @@ rtclient.REALTIME_MIMETYPE = "application/vnd.google-apps.drive-sdk"
 Parses the hash parameters to this page and returns them as an object.
 @function
 ###
-rtclient.getParams = ->
+
+rtclient.getParamsHelper = (string) ->
   params = {}
-  hashFragment = window.location.hash
+  hashFragment = string
   if hashFragment
     
     # split up the query string and store in an object
@@ -70,11 +71,17 @@ rtclient.getParams = ->
   console.log params
   params
 
+rtclient.getParams = ->
+  rtclient.getParamsHelper window.location.hash
+
+rtclient.getQueryParams = ->
+  rtclient.getParamsHelper window.location.search  
 
 ###
 Instance of the query parameters.
 ###
 rtclient.params = rtclient.getParams()
+rtclient.query = rtclient.getQueryParams()
 
 ###
 Fetches an option from options or a default value, logging an error if
@@ -324,13 +331,14 @@ Loads or creates a Realtime file depending on the fileId and state query
 parameters.
 ###
 rtclient.RealtimeLoader::load = ->
-  fileIds = rtclient.params["fileIds"]
-  fileIds = fileIds.split(",")  if fileIds
+  fileIds = rtclient.params["fileIds"]?.split(",")
   userId = @authorizer.userId
   state = rtclient.params["state"]
   
   # Creating the error callback.
   authorizer = @authorizer
+
+  debugger
   
   # We have file IDs in the query parameters, so we will use them to load a file.
   if fileIds

@@ -1,6 +1,5 @@
 CLIENT_ID = "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com"
-APP_ID = '750901531017' #CLIENT_ID.split('-')[0]
-console.log APP_ID
+APP_ID = CLIENT_ID.split('-')[0]
 
 # class Comment
 # gapi.drive.realtime.custom.registerType Comment, 'Comment'
@@ -252,10 +251,10 @@ authorize = ->
 		if response.error
 			# Authorization failed because this is the first time the user has used your application,
 			# show the authorize button to prompt them to authorize manually.
-			button = document.getElementById('auth-button')
-			button.classList.add 'visible'
-			button.addEventListener 'click', ->
+			button = $('#auth-button')
+			button.show().on 'click', ->
 				realtimeUtils.authorize ((response) ->
+					button.hide()
 					start()
 					return
 				), true
@@ -286,7 +285,7 @@ init_share = ->
 	s = new gapi.drive.share.ShareClient APP_ID
 	s.setItemIds id
 
-	$('#share-button').on 'click', (event) ->
+	$('#share-button').show().on 'click', (event) ->
 		s.showSettingsDialog()
 	return
 

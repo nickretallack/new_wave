@@ -1,3 +1,7 @@
 .thread {
 	margin-left:3%;
 }
+
+.hidden {
+	display: none;
+}

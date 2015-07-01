@@ -4,9 +4,7 @@
 
   CLIENT_ID = "750901531017-tr6fb08mn5kacnd1suht48uj8762dkc5.apps.googleusercontent.com";
 
-  APP_ID = '750901531017';
-
-  console.log(APP_ID);
+  APP_ID = CLIENT_ID.split('-')[0];
 
 
   /*
@@ -276,10 +274,10 @@
     realtimeUtils.authorize((function(response) {
       var button;
       if (response.error) {
-        button = document.getElementById('auth-button');
-        button.classList.add('visible');
-        button.addEventListener('click', function() {
+        button = $('#auth-button');
+        button.show().on('click', function() {
           realtimeUtils.authorize((function(response) {
+            button.hide();
             start();
           }), true);
         });
@@ -307,7 +305,7 @@
     id = realtimeUtils.getParam('id');
     s = new gapi.drive.share.ShareClient(APP_ID);
     s.setItemIds(id);
-    $('#share-button').on('click', function(event) {
+    $('#share-button').show().on('click', function(event) {
       return s.showSettingsDialog();
     });
   };
